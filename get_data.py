@@ -3,6 +3,7 @@ import imaplib
 import logging
 
 import arrow
+from tqdm import tqdm
 
 from util import get_creds
 from tables import Messages, Recipients, EmailAddresses, Aliases
@@ -32,25 +33,24 @@ def check_result(status):
         raise MailError('Something went wrong! Status: {}'.format(status))
 
 
-def get_mailbox_uids(mailbox):
+def get_mailbox_uids(mailbox, fetched_ids):
     status, result = mailbox.uid('search', None, 'ALL')
     check_result(status)
-    return result[0].split()
+    new_results = [j for j in result[0].decode('utf-8').split() if j not in fetched_ids]
+    return new_results
 
 
-def mail_fetcher():
+def mail_fetcher(fetched_ids):
     for box in (SENT, INBOX):
         mailbox = get_mailbox(box)
-        all_uids = get_mailbox_uids(mailbox)
+        all_uids = get_mailbox_uids(mailbox, fetched_ids)
         n_emails = len(all_uids)
         logger.info('Fetching {:,d} emails from {:s}'.format(n_emails, box))
-        for idx, uid in enumerate(all_uids, 1):
-            if idx % 100 == 0:
-                logger.info('{:,d} of {:,d} emails fetched from {:s}'.format(idx, n_emails, box))
+        for uid in tqdm(all_uids):
             status, result = mailbox.uid('fetch', uid, '(RFC822)')
             check_result(status)
             message = email.message_from_string(result[0][1].decode('utf-8', errors='ignore'))
-            yield process_message(message)
+            yield process_message(message, uid)
 
 
 def get_message_snippet(message):
@@ -86,8 +86,9 @@ def get_date(message):
     return 0
 
 
-def process_message(message):
+def process_message(message, uid):
     data = {}
+    data['uid'] = int(uid)
     data['sent'] = get_date(message)
     data['subject'] = message['Subject']
     data['snippet'] = get_message_snippet(message)
@@ -100,7 +101,7 @@ def build_db():
     recipients = Recipients()
     email_addresses = EmailAddresses()
     aliases = Aliases()
-    for message in mail_fetcher():
+    for message in mail_fetcher(messages.get_all_uids()):
         message_id = messages.insert(**message)
         for recipient in message['recipients']:
             recipient['message_id'] = message_id

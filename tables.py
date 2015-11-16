@@ -11,7 +11,7 @@ class Table(DBHelper):
 
     def insert(self, **kwargs):
         # remove all foreign keys
-        fields = [j for j, _ in self.schema if not j.endswith('id')]
+        fields = [j for j, _ in self.schema[1:] if not j.endswith('_id')]
         values = [kwargs[j] for j in fields]
         clause = " AND ".join(["{} = ?".format(field) for field in fields])
         query = """SELECT id FROM {} WHERE {}""".format(self.name, clause)
@@ -28,9 +28,13 @@ class Table(DBHelper):
 class Messages(Table):
     name = 'messages'
     schema = [('id', 'INTEGER PRIMARY KEY'),
+              ('uid', 'INTEGER'),
               ('subject', 'TEXT'),
               ('snippet', 'TEXT'),
               ('sent', 'INTEGER')]
+
+    def get_all_uids(self):
+        return [str(j['uid']) for j in self.query('SELECT uid FROM {}'.format(self.name))]
 
 
 class Recipients(Table):
