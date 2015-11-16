@@ -81,8 +81,8 @@ class Aliases(Table):
     def insert(self, **kwargs):
         result = self.single_query("""
         SELECT id FROM {0}
-        WHERE email_address_id = {email_address_id} AND alias = '{alias}'""".format(
-            self.name, **kwargs))
+        WHERE email_address_id = ? AND alias = ?""".format(
+            self.name), kwargs['email_address_id'], kwargs['alias'])
         if result:
             return result['id']
         self.insert_row(self.name, [None, kwargs['email_address_id'], kwargs['alias']])
