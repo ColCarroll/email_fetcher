@@ -67,7 +67,7 @@ def get_recipients(message):
     recipients = []
     for role in ('Bcc', 'Cc', 'To', 'From'):
         if message[role] is not None:
-            members = [email.utils.parseaddr(str(j)) for j in message[role].split(',')]
+            members = [email.utils.parseaddr(str(j)) for j in message[role].split(',\r\n')]
             for alias, address in members:
                 recipients.append({
                     'alias': alias,
