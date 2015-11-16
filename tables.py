@@ -10,8 +10,8 @@ class Table(DBHelper):
         return self.single_query("SELECT max(id) AS id FROM {}".format(self.name))['id']
 
     def insert(self, **kwargs):
-        # remove all foreign keys
-        fields = [j for j, _ in self.schema[1:] if not j.endswith('_id')]
+        # remove primary key
+        fields = [j for j, _ in self.schema[1:]]
         values = [kwargs[j] for j in fields]
         clause = " AND ".join(["{} = ?".format(field) for field in fields])
         query = """SELECT id FROM {} WHERE {}""".format(self.name, clause)
@@ -19,9 +19,7 @@ class Table(DBHelper):
         if result:
             return result['id']
 
-        # keep (autoincrementing) primary key out
-        fields_with_keys = [j for j, _ in self.schema[1:]]
-        self.insert_row(self.name, [None] + [kwargs[j] for j in fields_with_keys])
+        self.insert_row(self.name, [None] + [kwargs[j] for j in fields])
         return self.max_id()
 
 
