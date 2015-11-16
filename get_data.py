@@ -58,7 +58,8 @@ def get_message_snippet(message):
     if maintype == 'multipart':
         for part in message.get_payload():
             if part.get_content_maintype() == 'text':
-                return part.get_payload(decode=True)[:SNIPPET_LENGTH].decode('utf-8', errors='ignore')
+                return part.get_payload(decode=True)[:SNIPPET_LENGTH].decode(
+                    'utf-8', errors='ignore')
     elif maintype == 'text':
         return message.get_payload(decode=True)[:SNIPPET_LENGTH].decode('utf-8', errors='ignore')
 
