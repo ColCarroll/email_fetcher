@@ -4,86 +4,51 @@ from db_utils import DBHelper
 class Table(DBHelper):
     def __init__(self):
         if not self.table_exists(self.name):
-            self.create_table(self.name, self.schema())
+            self.create_table(self.name, self.schema)
+
+    def max_id(self):
+        return self.single_query("SELECT max(id) AS id FROM {}".format(self.name))['id']
+
+    def insert(self, **kwargs):
+        # remove all foreign keys
+        fields = [j for j, _ in self.schema if not j.endswith('id')]
+        values = [kwargs[j] for j in fields]
+        clause = " AND ".join(["{} = ?".format(field) for field in fields])
+        query = """SELECT id FROM {} WHERE {}""".format(self.name, clause)
+        result = self.single_query(query, *values)
+        if result:
+            return result['id']
+
+        # keep (autoincrementing) primary key out
+        fields_with_keys = [j for j, _ in self.schema[1:]]
+        self.insert_row(self.name, [None] + [kwargs[j] for j in fields_with_keys])
+        return self.max_id()
 
 
 class Messages(Table):
     name = 'messages'
-
-    def schema(self):
-        return [
-            ('id', 'INTEGER PRIMARY KEY'),
-            ('subject', 'TEXT'),
-            ('snippet', 'TEXT'),
-            ('sent', 'INTEGER')]
-
-    def insert(self, **kwargs):
-        query = """
-        SELECT id FROM {0}
-        WHERE subject = ? AND sent = ?""".format(self.name)
-        result = self.single_query(query, kwargs['subject'], kwargs['sent'])
-        if result:
-            return result['id']
-        self.insert_row(self.name, [None, kwargs['subject'], kwargs['snippet'], kwargs['sent']])
-        return self.single_query("SELECT max(id) AS id FROM {}".format(self.name))['id']
+    schema = [('id', 'INTEGER PRIMARY KEY'),
+              ('subject', 'TEXT'),
+              ('snippet', 'TEXT'),
+              ('sent', 'INTEGER')]
 
 
 class Recipients(Table):
     name = 'recipients'
-
-    def schema(self):
-        return [
-            ('id', 'INTEGER PRIMARY KEY'),
-            ('message_id', 'INTEGER'),
-            ('email_address_id', 'INTEGER'),
-            ('role', 'TEXT')]
-
-    def insert(self, **kwargs):
-        result = self.single_query("""
-        SELECT id FROM {0}
-        WHERE message_id = {message_id} AND message_id = {message_id}
-            AND email_address_id = {email_address_id} AND role = '{role}'""".format(
-            self.name, **kwargs))
-        if result:
-            return result['id']
-        self.insert_row(self.name,
-                        [None, kwargs['message_id'], kwargs['email_address_id'], kwargs['role']])
-        return self.single_query("SELECT max(id) AS id FROM {}".format(self.name))['id']
+    schema = [('id', 'INTEGER PRIMARY KEY'),
+              ('message_id', 'INTEGER'),
+              ('email_address_id', 'INTEGER'),
+              ('role', 'TEXT')]
 
 
 class EmailAddresses(Table):
     name = 'email_addresses'
-
-    def schema(self):
-        return [
-            ('id', 'INTEGER PRIMARY KEY'),
-            ('email_address', 'TEXT')]
-
-    def insert(self, **kwargs):
-        result = self.single_query("SELECT id FROM {} WHERE email_address = '{}'".format(
-            self.name, kwargs.get('email_address')))
-        if result:
-            return result['id']
-        self.insert_row(self.name, [None, kwargs['email_address']])
-
-        return self.single_query("SELECT max(id) AS id FROM {}".format(self.name))['id']
+    schema = [('id', 'INTEGER PRIMARY KEY'),
+              ('email_address', 'TEXT')]
 
 
 class Aliases(Table):
     name = 'aliases'
-
-    def schema(self):
-        return [
-            ('id', 'INTEGER PRIMARY KEY'),
-            ('email_address_id', 'INTEGER'),
-            ('alias', 'TEXT')]
-
-    def insert(self, **kwargs):
-        result = self.single_query("""
-        SELECT id FROM {0}
-        WHERE email_address_id = ? AND alias = ?""".format(
-            self.name), kwargs['email_address_id'], kwargs['alias'])
-        if result:
-            return result['id']
-        self.insert_row(self.name, [None, kwargs['email_address_id'], kwargs['alias']])
-        return self.single_query("SELECT max(id) AS id FROM {}".format(self.name))['id']
+    schema = [('id', 'INTEGER PRIMARY KEY'),
+              ('email_address_id', 'INTEGER'),
+              ('alias', 'TEXT')]
