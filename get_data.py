@@ -21,16 +21,16 @@ class MailError(Exception):
 
 
 def get_mailbox(box=SENT):
-    logger.info("Authenticating to {}".format(box))
+    logger.info("Authenticating to %s", box)
     mailbox = imaplib.IMAP4_SSL('imap.gmail.com')
-    _, msg = mailbox.login(**get_creds())
+    mailbox.login(**get_creds())
     mailbox.select(box, readonly=True)
     return mailbox
 
 
 def check_result(status):
     if status != 'OK':
-        raise MailError('Something went wrong! Status: {}'.format(status))
+        raise MailError('Something went wrong! Status: %s', status)
 
 
 def get_mailbox_uids(mailbox, fetched_ids):
